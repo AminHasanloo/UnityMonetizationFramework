@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='utf-8'?>
+<manifest xmlns:android='http://schemas.android.com/apk/res/android' package='${applicationId}'>
+
+  <uses-permission android:name='android.permission.INTERNET' />
+
+  <!-- CafeBazaar billing permission -->
+  <uses-permission android:name='com.farsitel.bazaar.permission.PAY_THROUGH_BAZAAR' />
+  <!-- Myket billing permission -->
+  <uses-permission android:name='ir.mservices.market.BILLING' />
+
+  <application>
+    <!-- CafeBazaar proxy (if Bazaar plugin is used) -->
+    <meta-data android:name='billing.service' android:value='bazaar.BazaarIabService' />
+    <activity android:name='com.bazaar.BazaarIABProxyActivity' android:theme='@android:style/Theme.Translucent.NoTitleBar.Fullscreen' />
+
+    <!-- Myket proxy (if Myket plugin is used) -->
+    <meta-data android:name='billing.service' android:value='myket.MyketIabService' />
+    <activity android:name='com.myket.MyketIABProxyActivity' android:theme='@android:style/Theme.Translucent.NoTitleBar.Fullscreen' />
+
+    <!-- Zarinpal deep-link (customize scheme/host) -->
+    <activity android:name='com.unity3d.player.UnityPlayerActivity' android:launchMode='singleTask'>
+      <intent-filter>
+        <action android:name='android.intent.action.VIEW' />
+        <category android:name='android.intent.category.DEFAULT' />
+        <category android:name='android.intent.category.BROWSABLE' />
+        <data android:scheme='myapp' android:host='zarinpal' />
+      </intent-filter>
+    </activity>
+  </application>
+</manifest>

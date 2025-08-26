@@ -1,0 +1,29 @@
+{
+  "name": "com.aminhasanloo.monetization",
+  "displayName": "Amin Hasanloo Monetization (IAP + Ads)",
+  "version": "1.0.0",
+  "unity": "2021.3",
+  "description": "IAP (Google Play, CafeBazaar, Myket, Zarinpal) + Ads (AdMob, Tapsell, ironSource/LevelPlay) with inspector-based settings and adapters.",
+  "author": {
+    "name": "Amin Hasanloo",
+    "email": "amin@example.com"
+  },
+  "keywords": [
+    "unity",
+    "iap",
+    "ads",
+    "admob",
+    "tapsell",
+    "ironsource",
+    "zarinpal",
+    "cafebazaar",
+    "myket"
+  ],
+  "samples": [
+    {
+      "displayName": "Demo",
+      "description": "Sample scene and scripts to test monetization flows.",
+      "path": "Samples~/Demo"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "AminHasanloo.Monetization.Editor",
+  "references": [
+    "AminHasanloo.Monetization.Runtime"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "autoReferenced": true
+}
