@@ -1,36 +1,117 @@
 // SPDX-License-Identifier: MIT
+using System;
 using System.Threading.Tasks;
+using AminHasanloo.Monetization.Ads;
+using AminHasanloo.Monetization.IAP;
 using AminHasanloo.Monetization.Settings;
+using UnityEngine;
 
 namespace AminHasanloo.Monetization
 {
     public static class Monetization
     {
-        public static async Task InitializeAsync()
-        {
-            var s = MonetizationSettings.Load();
-            if (s.initializeOnStartup)
-            {
-                // Ads
-                await Ads.Ads.InitializeAsync();
+        static Task initializationTask;
+        static bool initialized;
 
-                // IAP
+        public static bool IsInitialized => initialized;
+
+        public static Task InitializeAsync(bool force = false)
+        {
+            if (initialized && !force)
+                return Task.CompletedTask;
+
+            if (initializationTask != null && !initializationTask.IsCompleted && !force)
+                return initializationTask;
+
+            initializationTask = InitializeInternalAsync(force);
+            return initializationTask;
+        }
+
+        static async Task InitializeInternalAsync(bool force)
+        {
+            if (force)
+            {
+                Iap.Shutdown();
+                Ads.Reset();
+                initialized = false;
+            }
+
+            var settings = MonetizationSettings.Load();
+            var products = settings.GetProducts();
+
+            await Ads.InitializeAsync();
+
+            IIapProvider provider;
+            var selectedStore = settings.activeStore;
+
+#if UNITY_EDITOR
+            if (settings.useMockServicesInEditor)
+                selectedStore = StoreProvider.Mock;
+#endif
+
+            switch (selectedStore)
+            {
+                case StoreProvider.Mock:
+                    provider = new MockIapProvider();
+                    break;
+
+                case StoreProvider.GooglePlay:
 #if STORE_GOOGLEPLAY
-                var gp = new IAP.Providers.GooglePlayIapProvider();
-                IAP.Iap.Initialize(gp, s.productIds);
+                    provider = new GooglePlayIapProvider(settings.googlePlay, selectedStore);
+#else
+                    throw MissingSdk("Google Play", "STORE_GOOGLEPLAY", "Unity IAP 5.x");
 #endif
+
+                case StoreProvider.CafeBazaar:
 #if STORE_CAFEBAZAAR
-                var bazaar = new IAP.Providers.CafeBazaarIapProvider(s.cafeBazaar.publicKey);
-                IAP.Iap.Initialize(bazaar, s.productIds);
+                    provider = new CafeBazaarIapProvider(settings.cafeBazaar, selectedStore);
+#else
+                    throw MissingSdk("Cafe Bazaar", "STORE_CAFEBAZAAR", "Poolakey Unity SDK");
 #endif
+
+                case StoreProvider.Myket:
 #if STORE_MYKET
-                var myket = new IAP.Providers.MyketIapProvider(s.myket.publicKey);
-                IAP.Iap.Initialize(myket, s.productIds);
+                    provider = new MyketIapProvider(settings.myket, selectedStore);
+#else
+                    throw MissingSdk("Myket", "STORE_MYKET", "official Myket Billing Unity adapter");
 #endif
+
+                case StoreProvider.ZarinpalLegacy:
 #if PAY_ZARINPAL
-                var zarin = new IAP.Providers.ZarinpalProvider(s.zarinpal.merchantId, s.zarinpal.callbackUrl, s.zarinpal.baseApiUrl);
-                IAP.Iap.Initialize(zarin, s.productIds);
+                    provider = new ZarinpalProvider(settings.zarinpal);
+#else
+                    throw MissingSdk("Zarinpal legacy client flow", "PAY_ZARINPAL", "the legacy adapter");
 #endif
+
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+
+            await Iap.InitializeAsync(provider, products);
+            initialized = true;
+            Debug.Log($"[Monetization] Initialized. IAP={Iap.ProviderName}, Ads={Ads.NetworkCount}");
+        }
+
+        static InvalidOperationException MissingSdk(string provider, string symbol, string dependency)
+        {
+            return new InvalidOperationException(
+                $"{provider} is selected, but its adapter is not compiled. Install {dependency}, then enable scripting symbol {symbol} from Monetization Settings.");
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        static async void AutoInitialize()
+        {
+            var settings = MonetizationSettings.Load();
+            if (!settings.initializeOnStartup)
+                return;
+
+            try
+            {
+                await InitializeAsync();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[Monetization] Auto initialization failed: {ex}");
             }
         }
     }
