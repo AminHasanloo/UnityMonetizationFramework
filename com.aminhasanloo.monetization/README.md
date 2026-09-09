@@ -1,27 +1,23 @@
 # Unity Monetization Framework v2
 
-A modular IAP + Ads layer for Unity by **Amin Hasanloo**.
+A modular IAP + Ads layer for **Unity 6** by **Amin Hasanloo**.
 
-## v2.0 at a glance
+## v2.0 status
 
-- Editor-safe **Mock IAP + Mock Ads** for development without store/ad accounts.
-- **Google Play** through Unity IAP 5.x `StoreController`.
-- **Cafe Bazaar** through the official Poolakey Unity SDK.
-- **AdMob** through the current full-screen ad lifecycle.
-- **Tapsell Plus** adapter retained behind an optional scripting symbol.
-- Exactly **one active IAP store** at runtime.
-- Async initialization and restore APIs.
-- Typed product catalog with store-specific ID overrides.
-- Legacy fake Myket/Bazaar shims and unsafe direct-client Zarinpal flow removed.
-
-> Myket, LevelPlay 9+ and secure server-backed Zarinpal are tracked in the root README roadmap rather than being presented as finished integrations.
+- ✅ Editor-safe **Mock IAP + Mock Ads**
+- ✅ **Google Play** via Unity IAP **5.0.4**
+- ✅ **Cafe Bazaar** via the official Poolakey API
+- ✅ **AdMob** current full-screen ad lifecycle
+- ✅ Single active IAP store, async initialization, typed product catalog
+- 🧭 Tapsell Plus, Myket and LevelPlay are roadmap integrations, not fake/stale adapters
+- 🔒 Direct client-side Zarinpal verification has been removed in favor of a future backend flow
 
 ## Quick start
 
 1. Open **Window > Monetization > Settings**.
 2. Create `Assets/Resources/MonetizationSettings.asset`.
 3. Keep `Active Store = Mock` and `Use Mock Services In Editor = true`.
-4. Add at least one product to the `Products` catalog.
+4. Add at least one product to `Products`.
 5. Import the **Monetization Demo** sample or initialize from code.
 
 ```csharp
@@ -49,22 +45,30 @@ public class Demo : MonoBehaviour
 }
 ```
 
+The default Editor mock lets you build and test shop UI, purchase callbacks and rewarded-ad gameplay without external SDK accounts.
+
 ## External SDKs
 
-Only install the SDKs you actually enable:
+Only install what you use:
 
-- Google Play: Unity IAP 5.x is already declared as a package dependency.
-- Cafe Bazaar: official [Poolakey Unity SDK](https://github.com/cafebazaar/PoolakeyUnitySdk).
-- AdMob: current Google Mobile Ads Unity plugin.
-- Tapsell: current official Tapsell Plus Unity plugin.
+- **Google Play:** Unity IAP 5.0.4 is declared as a package dependency.
+- **Cafe Bazaar:** official [Poolakey Unity SDK](https://github.com/cafebazaar/PoolakeyUnitySdk).
+- **AdMob:** current official Google Mobile Ads Unity plugin.
 
-After installing an external provider SDK, configure the provider in **Window > Monetization > Settings** and click **Apply Android Scripting Define Symbols**.
+After installing an external SDK, configure it in **Window > Monetization > Settings** and apply Android scripting symbols.
 
-## Security
+## Intentionally not enabled in v2.0
 
-For valuable currencies and server-authoritative economies, verify purchases on a backend and make fulfillment idempotent. Do not put payment gateway verification secrets or authoritative prices inside the shipped client.
+- **Tapsell Plus:** requires a clean current response-ID adapter.
+- **Myket:** requires a real official Billing adapter.
+- **Unity LevelPlay:** requires the LevelPlay 9+ Init + Ad Unit API.
+- **Zarinpal:** should use a server-owned checkout and verification flow.
 
-## Full documentation & roadmap
+## Production note
+
+Official SDK integrations still need provider dashboard configuration, valid test accounts/IDs and real-device/store testing. For valuable currencies or competitive economies, make purchase fulfillment server-authoritative and idempotent.
+
+## Full docs & roadmap
 
 See the repository root README:
 
