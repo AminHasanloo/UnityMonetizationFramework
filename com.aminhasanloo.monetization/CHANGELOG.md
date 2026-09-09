@@ -13,10 +13,11 @@
 
 ### Updated
 - Package target moved to **Unity 6 / 6000.0+**.
-- Unity IAP dependency updated to **5.0.4**.
+- Unity IAP dependency updated to **5.4.3**.
 - Google Play adapter migrated from v4 `IStoreListener` / `ConfigurationBuilder` to the Unity IAP 5 `StoreController` flow.
 - Google Play now registers store, product-fetch, purchase-fetch and purchase-failure callbacks before requests are made.
 - AdMob adapter migrated to the current static `Load()`, `CanShowAd()` and rewarded `Show(Action<Reward>)` lifecycle.
+- AdMob full-screen objects are now single-use, destroyed after close/failure and automatically reloaded; banner readiness tracks actual load success.
 - Cafe Bazaar replaced with a real binding to the official Poolakey `Payment` API.
 - Settings window rebuilt around one active store and conservative scripting-symbol management.
 - Demo sample updated to the v2 async API and mock-first Editor workflow.
