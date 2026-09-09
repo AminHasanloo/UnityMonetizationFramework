@@ -2,6 +2,7 @@
 #if STORE_GOOGLEPLAY
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using AminHasanloo.Monetization.Settings;
 using UnityEngine;
@@ -10,8 +11,7 @@ using UnityEngine.Purchasing;
 namespace AminHasanloo.Monetization.IAP
 {
     /// <summary>
-    /// Unity IAP 5.x adapter. The v1 IStoreListener/ConfigurationBuilder implementation
-    /// was removed because those APIs were replaced by StoreController in IAP v5.
+    /// Unity IAP 5.x adapter using StoreController.
     /// </summary>
     public sealed class GooglePlayIapProvider : IIapProvider
     {
@@ -56,26 +56,28 @@ namespace AminHasanloo.Monetization.IAP
             }
 
             controller = UnityIAPServices.StoreController();
+
+            // Unity IAP 5 expects both success and failure callbacks to be registered.
+            controller.OnStoreConnected += () => Debug.Log("[Monetization/GooglePlay] Store connected.");
+            controller.OnStoreDisconnected += description =>
+                Debug.LogWarning($"[Monetization/GooglePlay] Store disconnected: {description.message}");
+
             controller.OnPurchasePending += OnPurchasePending;
-            controller.OnPurchaseFailed += failedOrder =>
-                PurchaseFailed?.Invoke(TryGetCanonicalId(failedOrder.ToString()), failedOrder.ToString());
+            controller.OnPurchaseFailed += OnPurchaseFailedInternal;
 
             productsFetched = new TaskCompletionSource<bool>();
-            controller.OnProductsFetched += fetchedProducts => productsFetched.TrySetResult(true);
-            controller.OnProductsFetchFailed += failure =>
-                productsFetched.TrySetException(new InvalidOperationException($"Unity IAP product fetch failed: {failure}"));
-
-            controller.OnPurchasesFetched += orders =>
+            controller.OnProductsFetched += fetchedProducts =>
             {
-                foreach (var confirmedOrder in orders.ConfirmedOrders)
-                {
-                    foreach (var item in confirmedOrder.CartOrdered.Items())
-                    {
-                        if (item.Product.definition.type == ProductType.Consumable) continue;
-                        PurchaseSucceeded?.Invoke(TryGetCanonicalId(item.Product.definition.id));
-                    }
-                }
+                Debug.Log($"[Monetization/GooglePlay] Fetched {fetchedProducts.Count} product(s).");
+                productsFetched.TrySetResult(true);
             };
+            controller.OnProductsFetchFailed += failure =>
+                productsFetched.TrySetException(new InvalidOperationException(
+                    $"Unity IAP product fetch failed: {failure.FailureReason}"));
+
+            controller.OnPurchasesFetched += OnPurchasesFetched;
+            controller.OnPurchasesFetchFailed += failure =>
+                Debug.LogWarning($"[Monetization/GooglePlay] Purchase restore failed: {failure.FailureReason} | {failure.Message}");
 
             await controller.Connect();
 
@@ -87,7 +89,7 @@ namespace AminHasanloo.Monetization.IAP
 
             IsInitialized = true;
             controller.FetchPurchases();
-            Debug.Log($"[Monetization/GooglePlay] Unity IAP v5 connected with {definitions.Count} product(s).");
+            Debug.Log($"[Monetization/GooglePlay] Unity IAP v5 ready with {definitions.Count} product(s).");
         }
 
         public void Purchase(string productId)
@@ -121,14 +123,41 @@ namespace AminHasanloo.Monetization.IAP
                 foreach (var item in order.CartOrdered.Items())
                     PurchaseSucceeded?.Invoke(TryGetCanonicalId(item.Product.definition.id));
 
-                // Basic local-fulfilment mode. For server-authoritative economies, replace this
-                // with receipt verification before ConfirmPurchase (see README roadmap/security notes).
+                // Local-fulfilment default. Server-authoritative games should verify and grant
+                // idempotently before confirming the pending order.
                 controller.ConfirmPurchase(order);
             }
             catch (Exception ex)
             {
-                PurchaseFailed?.Invoke(string.Empty, $"Purchase fulfillment failed: {ex.Message}");
+                PurchaseFailed?.Invoke(GetFirstProductId(order), $"Purchase fulfillment failed: {ex.Message}");
             }
+        }
+
+        void OnPurchaseFailedInternal(FailedOrder order)
+        {
+            var storeId = GetFirstProductId(order);
+            var message = $"{order.FailureReason}: {order.Details}";
+            PurchaseFailed?.Invoke(TryGetCanonicalId(storeId), message);
+        }
+
+        void OnPurchasesFetched(Orders orders)
+        {
+            // Confirmed non-consumables/subscriptions are re-delivered as entitlements.
+            // Game-side entitlement handling should be idempotent.
+            foreach (var confirmedOrder in orders.ConfirmedOrders)
+            {
+                foreach (var item in confirmedOrder.CartOrdered.Items())
+                {
+                    if (item.Product.definition.type == ProductType.Consumable) continue;
+                    PurchaseSucceeded?.Invoke(TryGetCanonicalId(item.Product.definition.id));
+                }
+            }
+        }
+
+        static string GetFirstProductId(Order order)
+        {
+            var item = order?.CartOrdered?.Items()?.FirstOrDefault();
+            return item?.Product?.definition?.id ?? string.Empty;
         }
 
         string TryGetCanonicalId(string storeId)
