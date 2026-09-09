@@ -1,7 +1,9 @@
 {
   "name": "AminHasanloo.Monetization.Runtime",
-  "references": [],
-  "optionalUnityReferences": [],
+  "rootNamespace": "AminHasanloo.Monetization",
+  "references": [
+    "Unity.Purchasing"
+  ],
   "includePlatforms": [],
   "excludePlatforms": [],
   "allowUnsafeCode": false,
@@ -9,5 +11,6 @@
   "precompiledReferences": [],
   "autoReferenced": true,
   "defineConstraints": [],
-  "versionDefines": []
+  "versionDefines": [],
+  "noEngineReferences": false
 }
