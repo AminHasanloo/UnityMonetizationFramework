@@ -30,14 +30,10 @@ namespace AminHasanloo.Monetization.Ads
 #if AD_ADMOB
             if (s.adMob.enabled) networks.Add(new AdMobAdapter(s.adMob));
 #endif
-#if AD_TAPSELL
-            if (s.tapsell.enabled) networks.Add(new TapsellAdapter(s.tapsell));
-#endif
 
-            // LevelPlay's legacy IronSource.Agent integration from v1 is intentionally not
-            // registered in v2. Unity requires the newer LevelPlay Init + Ad Unit APIs.
-            // A clean AD_LEVELPLAY adapter is tracked in the roadmap instead of pretending
-            // the legacy adapter is production-safe.
+            // v2.0 deliberately does not register the legacy Tapsell/ironSource adapters.
+            // Their v1 APIs were stale or semantically incorrect. Clean adapters using the
+            // current Tapsell response-ID flow and LevelPlay Ad Unit APIs are on the roadmap.
 
             foreach (var network in networks)
             {
