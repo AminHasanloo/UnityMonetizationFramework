@@ -23,9 +23,9 @@ jobs:
           package = json.loads((root / "package.json").read_text(encoding="utf-8"))
 
           assert package["name"] == "com.aminhasanloo.monetization"
-          assert package["version"].startswith("2.")
+          assert package["version"] == "2.0.0"
           assert package["unity"].startswith("6000.")
-          assert package["dependencies"]["com.unity.purchasing"].startswith("5.")
+          assert package["dependencies"]["com.unity.purchasing"] == "5.4.3"
 
           source = "\n".join(
               p.read_text(encoding="utf-8-sig", errors="ignore")
@@ -47,7 +47,19 @@ jobs:
               "Legacy Android store proxy manifest must remain removed"
 
           readme = Path("README.md").read_text(encoding="utf-8")
+          package_readme = (root / "README.md").read_text(encoding="utf-8")
+          changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
+
           assert "Future Roadmap" in readme
           assert "real-device/store validation" in readme
+          assert "Unity IAP 5.4.3" in readme
+          assert "Unity IAP **5.4.3**" in package_readme
+          assert "Unity IAP dependency updated to **5.4.3**" in changelog
+
+          # AdMob v2 must treat full-screen ads as single-use and track true banner readiness.
+          admob = (root / "Runtime/Ads/Adapters/AdMobAdapter.cs").read_text(encoding="utf-8")
+          assert "ad.Destroy();" in admob
+          assert "bannerLoaded" in admob
+          assert "OnBannerAdLoadFailed" in admob
 
           print("UPM package sanity checks passed.")
