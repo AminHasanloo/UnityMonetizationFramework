@@ -3,23 +3,27 @@
 using System;
 using System.Threading.Tasks;
 using AminHasanloo.Monetization.Settings;
-using GoogleMobileAds.Api; // Requires GoogleMobileAds Unity plugin
+using GoogleMobileAds.Api;
+using UnityEngine;
 
 namespace AminHasanloo.Monetization.Ads
 {
-    public class AdMobAdapter : IAdNetwork
+    /// <summary>
+    /// Google Mobile Ads adapter using the current static Load()/CanShowAd()/Show(Action&lt;Reward&gt;) API.
+    /// </summary>
+    public sealed class AdMobAdapter : IAdNetwork
     {
-        private readonly AdMobSettings _s;
-        private RewardedAd rewarded;
-        private InterstitialAd interstitial;
-        private BannerView banner;
+        readonly AdMobSettings settings;
+        RewardedAd rewarded;
+        InterstitialAd interstitial;
+        BannerView banner;
 
-        public AdMobAdapter(AdMobSettings s) { _s = s; }
+        public AdMobAdapter(AdMobSettings settings) => this.settings = settings;
 
         public Task InitializeAsync()
         {
             var tcs = new TaskCompletionSource<bool>();
-            MobileAds.Initialize(initStatus => tcs.SetResult(true));
+            MobileAds.Initialize(_ => tcs.TrySetResult(true));
             return tcs.Task;
         }
 
@@ -30,49 +34,135 @@ namespace AminHasanloo.Monetization.Ads
                 case AdType.Rewarded: return rewarded != null && rewarded.CanShowAd();
                 case AdType.Interstitial: return interstitial != null && interstitial.CanShowAd();
                 case AdType.Banner: return banner != null;
+                default: return false;
             }
-            return false;
         }
 
         public void Load(AdType type, string placement)
         {
-            var request = new AdRequest.Builder().Build();
-            if (type == AdType.Rewarded)
+            switch (type)
             {
-                RewardedAd.Load(_s.rewardedAdUnitId, request, (ad, err) =>
+                case AdType.Rewarded:
+                    LoadRewarded();
+                    break;
+                case AdType.Interstitial:
+                    LoadInterstitial();
+                    break;
+                case AdType.Banner:
+                    LoadBanner();
+                    break;
+            }
+        }
+
+        void LoadRewarded()
+        {
+            rewarded?.Destroy();
+            rewarded = null;
+
+            RewardedAd.Load(settings.rewardedAdUnitId, new AdRequest(), (ad, error) =>
+            {
+                if (error != null || ad == null)
                 {
-                    if (err != null) UnityEngine.Debug.LogError(err);
-                    rewarded = ad;
-                });
-            }
-            else if (type == AdType.Interstitial)
-            {
-                InterstitialAd.Load(_s.interstitialAdUnitId, request, (ad, err) =>
+                    Debug.LogWarning($"[Monetization/AdMob] Rewarded load failed: {error}");
+                    return;
+                }
+
+                rewarded = ad;
+                ad.OnAdFullScreenContentClosed += () =>
                 {
-                    if (err != null) UnityEngine.Debug.LogError(err);
-                    interstitial = ad;
-                });
-            }
-            else if (type == AdType.Banner)
+                    rewarded = null;
+                    LoadRewarded();
+                };
+                ad.OnAdFullScreenContentFailed += errorInfo =>
+                {
+                    Debug.LogWarning($"[Monetization/AdMob] Rewarded show failed: {errorInfo}");
+                    rewarded = null;
+                    LoadRewarded();
+                };
+            });
+        }
+
+        void LoadInterstitial()
+        {
+            interstitial?.Destroy();
+            interstitial = null;
+
+            InterstitialAd.Load(settings.interstitialAdUnitId, new AdRequest(), (ad, error) =>
             {
-                banner = new BannerView(_s.bannerAdUnitId, AdSize.Banner, AdPosition.Bottom);
-                banner.LoadAd(request);
-            }
+                if (error != null || ad == null)
+                {
+                    Debug.LogWarning($"[Monetization/AdMob] Interstitial load failed: {error}");
+                    return;
+                }
+
+                interstitial = ad;
+                ad.OnAdFullScreenContentClosed += () =>
+                {
+                    interstitial = null;
+                    LoadInterstitial();
+                };
+                ad.OnAdFullScreenContentFailed += errorInfo =>
+                {
+                    Debug.LogWarning($"[Monetization/AdMob] Interstitial show failed: {errorInfo}");
+                    interstitial = null;
+                    LoadInterstitial();
+                };
+            });
+        }
+
+        void LoadBanner()
+        {
+            DestroyBanner("default");
+            banner = new BannerView(settings.bannerAdUnitId, AdSize.Banner, AdPosition.Bottom);
+            banner.LoadAd(new AdRequest());
         }
 
         public void Show(AdType type, string placement, Action<Reward> onReward = null, Action onClosed = null)
         {
-            if (type == AdType.Rewarded && rewarded != null)
+            if (type == AdType.Rewarded && rewarded != null && rewarded.CanShowAd())
             {
-                rewarded.OnUserEarnedReward += (o, r) => onReward?.Invoke(new Reward { Type = r.Type, Amount = r.Amount });
-                rewarded.Show();
+                var ad = rewarded;
+                Action closeHandler = null;
+                closeHandler = () =>
+                {
+                    ad.OnAdFullScreenContentClosed -= closeHandler;
+                    onClosed?.Invoke();
+                };
+                ad.OnAdFullScreenContentClosed += closeHandler;
+                ad.Show(reward => onReward?.Invoke(new Reward { Type = reward.Type, Amount = reward.Amount }));
+                return;
             }
-            else if (type == AdType.Interstitial && interstitial != null) interstitial.Show();
-            else if (type == AdType.Banner && banner != null) { /* already showing */ }
+
+            if (type == AdType.Interstitial && interstitial != null && interstitial.CanShowAd())
+            {
+                var ad = interstitial;
+                Action closeHandler = null;
+                closeHandler = () =>
+                {
+                    ad.OnAdFullScreenContentClosed -= closeHandler;
+                    onClosed?.Invoke();
+                };
+                ad.OnAdFullScreenContentClosed += closeHandler;
+                ad.Show();
+                return;
+            }
+
+            if (type == AdType.Banner && banner != null)
+            {
+                banner.Show();
+                return;
+            }
+
+            Debug.LogWarning($"[Monetization/AdMob] {type} is not ready.");
         }
 
         public void HideBanner(string placement) => banner?.Hide();
-        public void DestroyBanner(string placement) { banner?.Destroy(); banner = null; }
+
+        public void DestroyBanner(string placement)
+        {
+            banner?.Destroy();
+            banner = null;
+        }
     }
 }
 #endif
