@@ -33,9 +33,11 @@ namespace AminHasanloo.Monetization.Ads
 #if AD_TAPSELL
             if (s.tapsell.enabled) networks.Add(new TapsellAdapter(s.tapsell));
 #endif
-#if AD_LEVELPLAY
-            if (s.levelPlay.enabled) networks.Add(new LevelPlayAdapter(s.levelPlay));
-#endif
+
+            // LevelPlay's legacy IronSource.Agent integration from v1 is intentionally not
+            // registered in v2. Unity requires the newer LevelPlay Init + Ad Unit APIs.
+            // A clean AD_LEVELPLAY adapter is tracked in the roadmap instead of pretending
+            // the legacy adapter is production-safe.
 
             foreach (var network in networks)
             {
