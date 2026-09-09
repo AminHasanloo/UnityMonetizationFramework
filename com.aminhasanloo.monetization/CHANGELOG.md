@@ -3,33 +3,39 @@
 ## 2.0.0 - Production-focused rewrite
 
 ### Added
-- Editor-safe Mock IAP provider and Mock Ads network so the package can be exercised without store/ad SDK accounts.
-- Async IAP lifecycle (`InitializeAsync`, `RestoreAsync`) and retained event subscriptions registered before initialization.
-- Explicit single-store routing with `StoreProvider` to prevent providers overwriting one another.
-- Typed product catalog with consumable, non-consumable, subscription and optional store-specific IDs.
-- Automatic runtime bootstrap when `initializeOnStartup` is enabled.
-- Ad loading/readiness helpers and deterministic network initialization.
+- Editor-safe Mock IAP provider and Mock Ads network so purchase/ad gameplay can be tested without store or ad accounts.
+- Async IAP lifecycle with `InitializeAsync` and `RestoreAsync`.
+- Persistent facade-level purchase event subscriptions, including listeners registered before provider initialization.
+- Explicit single-store routing with `StoreProvider`.
+- Typed product catalog with Consumable, NonConsumable, Subscription and optional store-specific IDs.
+- Real runtime auto-bootstrap when `initializeOnStartup` is enabled.
+- Ad load/readiness/show helpers.
 
 ### Updated
-- Google Play adapter migrated from Unity IAP v4 `IStoreListener` / `ConfigurationBuilder` to Unity IAP 5.x `StoreController`.
+- Package target moved to **Unity 6 / 6000.0+**.
+- Unity IAP dependency updated to **5.0.4**.
+- Google Play adapter migrated from v4 `IStoreListener` / `ConfigurationBuilder` to the Unity IAP 5 `StoreController` flow.
+- Google Play now registers store, product-fetch, purchase-fetch and purchase-failure callbacks before requests are made.
 - AdMob adapter migrated to the current static `Load()`, `CanShowAd()` and rewarded `Show(Action<Reward>)` lifecycle.
-- Cafe Bazaar provider replaced with a real adapter for the official Poolakey Unity SDK.
-- Settings window rebuilt around one active store and safer scripting define management.
+- Cafe Bazaar replaced with a real binding to the official Poolakey `Payment` API.
+- Settings window rebuilt around one active store and conservative scripting-symbol management.
 - Demo sample updated to the v2 async API and mock-first Editor workflow.
-- UPM metadata updated and Unity IAP 5.x added as a package dependency.
+- Root and package READMEs rewritten with setup, migration notes, security guidance and roadmap.
 
 ### Security / correctness
-- Removed the v1 fake Cafe Bazaar and Myket placeholder APIs that could compile without performing real billing.
-- Retired the direct client-side Zarinpal payment verification path. Production gateway verification must be server-authoritative.
-- Retired the legacy `IronSource.Agent` adapter because LevelPlay 9+ requires the newer Init and Ad Unit APIs.
+- Removed v1 fake Cafe Bazaar and Myket placeholder APIs.
+- Removed the old direct client-side Zarinpal request/verify flow and hardcoded price behavior.
+- Retired legacy `IronSource.Agent` integration because modern Unity LevelPlay uses the new Init and Ad Unit APIs.
+- Retired the old Tapsell adapter because the current SDK requires a request response ID before showing an ad.
+- Removed obsolete Android manifest proxy activities, Myket/Bazaar legacy permissions and Zarinpal deep-link shims. Official provider SDKs now own their manifest/dependency entries.
 
 ### Migration notes
-- `productIds` is retained as a hidden legacy field and is converted to consumable products when the new `products` catalog is empty.
-- Myket and LevelPlay are intentionally not auto-enabled in v2.0; clean adapters are listed in the README roadmap.
-- Store/ad SDK integrations still require their official vendor packages, dashboard configuration and real-device testing before release.
+- Legacy `productIds` is retained as a hidden field and is converted to consumable products when the new `products` catalog is empty.
+- `STORE_MYKET`, `PAY_ZARINPAL`, `AD_TAPSELL`, `AD_IRONSOURCE` and `AD_LEVELPLAY` are intentionally not enabled by the v2.0 settings window.
+- Google Play, Cafe Bazaar and AdMob still require provider-side configuration and real-device/store testing before release.
 
 ## 1.0.0 - Initial release
 - ScriptableObject settings for Ads & IAP.
-- Initial AdMob, Tapsell and legacy IronSource adapters.
+- Initial AdMob, Tapsell and legacy IronSource adapter concepts.
 - Initial Google Play, Cafe Bazaar, Myket and Zarinpal provider concepts.
 - Editor settings window and sample scripts.
