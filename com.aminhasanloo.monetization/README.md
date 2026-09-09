@@ -5,7 +5,7 @@ A modular IAP + Ads layer for **Unity 6** by **Amin Hasanloo**.
 ## v2.0 status
 
 - ✅ Editor-safe **Mock IAP + Mock Ads**
-- ✅ **Google Play** via Unity IAP **5.0.4**
+- ✅ **Google Play** via Unity IAP **5.4.3**
 - ✅ **Cafe Bazaar** via the official Poolakey API
 - ✅ **AdMob** current full-screen ad lifecycle
 - ✅ Single active IAP store, async initialization, typed product catalog
@@ -51,9 +51,9 @@ The default Editor mock lets you build and test shop UI, purchase callbacks and 
 
 Only install what you use:
 
-- **Google Play:** Unity IAP 5.0.4 is declared as a package dependency.
+- **Google Play:** Unity IAP 5.4.3 is declared as a package dependency.
 - **Cafe Bazaar:** official [Poolakey Unity SDK](https://github.com/cafebazaar/PoolakeyUnitySdk).
-- **AdMob:** current official Google Mobile Ads Unity plugin.
+- **AdMob:** current official Google Mobile Ads Unity plugin. The v2 adapter follows the modern full-screen load/show contract and destroys/reloads used ad objects.
 
 After installing an external SDK, configure it in **Window > Monetization > Settings** and apply Android scripting symbols.
 
