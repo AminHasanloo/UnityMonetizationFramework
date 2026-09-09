@@ -1,0 +1,121 @@
+name: Provider validation report
+description: Record real Unity/device/store evidence for a monetization provider
+title: "[Validation] Provider / Environment / Result"
+labels:
+  - validation
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use one issue per provider + environment combination. Do not paste private keys, merchant secrets, production purchase tokens or sensitive receipts.
+
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Provider
+      options:
+        - Mock IAP / Mock Ads
+        - Google Play IAP
+        - Cafe Bazaar / Poolakey
+        - AdMob
+        - Myket
+        - Tapsell Plus
+        - Unity LevelPlay
+        - Zarinpal backend
+    validations:
+      required: true
+
+  - type: dropdown
+    id: result
+    attributes:
+      label: Result
+      options:
+        - PASS
+        - PARTIAL
+        - FAIL
+        - BLOCKED
+    validations:
+      required: true
+
+  - type: input
+    id: unity
+    attributes:
+      label: Unity version
+      placeholder: 6000.0.x / 6000.2.x
+    validations:
+      required: true
+
+  - type: input
+    id: framework
+    attributes:
+      label: Framework version / commit
+      placeholder: v2.0.0 or commit SHA
+    validations:
+      required: true
+
+  - type: input
+    id: sdk
+    attributes:
+      label: Provider SDK / plugin version
+      placeholder: Unity IAP 5.4.3 / Google Mobile Ads 11.x / Poolakey commit or release
+
+  - type: input
+    id: device
+    attributes:
+      label: Device and OS
+      placeholder: Pixel 7, Android 15
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Test environment
+      options:
+        - Unity Editor
+        - Google Play internal test
+        - Cafe Bazaar test environment
+        - AdMob test ad units
+        - Local Android build
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: scenarios
+    attributes:
+      label: Scenarios exercised
+      options:
+        - label: Initialization completed
+        - label: Catalog/products loaded
+        - label: Purchase success path tested
+        - label: Purchase cancel/failure path tested
+        - label: Restore/relaunch path tested
+        - label: Rewarded load/show/reward/close tested
+        - label: Interstitial load/show/close tested
+        - label: Banner load/show/hide/destroy tested
+        - label: Network/provider failure tested
+        - label: Relaunch did not duplicate callbacks or grants
+
+  - type: textarea
+    id: observations
+    attributes:
+      label: Observations
+      description: What happened? Include exact error messages when useful.
+      placeholder: Initialization, purchase/ad lifecycle, callbacks, restore behavior, edge cases...
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Add safe screenshots, recordings, log excerpts or links. Remove sensitive data.
+      placeholder: Screenshots / short recording / safe log excerpt / CI run...
+
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety confirmation
+      options:
+        - label: I did not include private keys, merchant secrets, production tokens or sensitive receipts.
+          required: true
+        - label: I used a provider-approved test environment or test IDs where applicable.

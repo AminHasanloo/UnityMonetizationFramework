@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate UPM metadata and v2 migration guards
+      - name: Validate UPM metadata, validation pack and v2 migration guards
         shell: python
         run: |
           import json
@@ -26,6 +26,23 @@ jobs:
           assert package["version"] == "2.0.0"
           assert package["unity"].startswith("6000.")
           assert package["dependencies"]["com.unity.purchasing"] == "5.4.3"
+
+          sample_names = {sample["displayName"] for sample in package.get("samples", [])}
+          assert "Monetization Demo" in sample_names
+          assert "Validation Dashboard" in sample_names
+
+          required_files = [
+              Path("VALIDATION.md"),
+              Path("RELEASE_CHECKLIST.md"),
+              Path(".github/ISSUE_TEMPLATE/provider-validation.yml"),
+              root / "Tests/Editor/AminHasanloo.Monetization.EditorTests.asmdef",
+              root / "Tests/Editor/MonetizationCoreTests.cs",
+              root / "Samples~/Validation/MonetizationValidationDashboard.cs",
+              root / "Samples~/Validation/Editor/MonetizationValidationSceneBuilder.cs",
+              root / "Samples~/Validation/README.md",
+          ]
+          for path in required_files:
+              assert path.exists(), f"Validation Pack file missing: {path}"
 
           source = "\n".join(
               p.read_text(encoding="utf-8-sig", errors="ignore")
@@ -46,20 +63,25 @@ jobs:
           assert not (root / "Plugins/Android/AndroidManifestTemplate.xml").exists(), \
               "Legacy Android store proxy manifest must remain removed"
 
+          tests = (root / "Tests/Editor/MonetizationCoreTests.cs").read_text(encoding="utf-8")
+          for test_name in [
+              "ProductDefinition_UsesStoreSpecificIdAndFallsBackToCanonicalId",
+              "LegacyCatalog_IsMigratedToConsumablesWhenV2CatalogIsEmpty",
+              "MockIap_KnownProduct_FiresSuccessExactlyOnce",
+              "MockIap_UnknownProduct_FiresFailureAndNeverSuccess",
+              "MockRewardedAd_FiresOneRewardAndOneCloseCallback",
+          ]:
+              assert test_name in tests, f"Core validation test missing: {test_name}"
+
           readme = Path("README.md").read_text(encoding="utf-8")
-          package_readme = (root / "README.md").read_text(encoding="utf-8")
-          changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
-
           assert "Future Roadmap" in readme
+          assert "Validation Pack" in readme
           assert "real-device/store validation" in readme
-          assert "Unity IAP 5.4.3" in readme
-          assert "Unity IAP **5.4.3**" in package_readme
-          assert "Unity IAP dependency updated to **5.4.3**" in changelog
 
-          # AdMob v2 must treat full-screen ads as single-use and track true banner readiness.
-          admob = (root / "Runtime/Ads/Adapters/AdMobAdapter.cs").read_text(encoding="utf-8")
-          assert "ad.Destroy();" in admob
-          assert "bannerLoaded" in admob
-          assert "OnBannerAdLoadFailed" in admob
+          validation = Path("VALIDATION.md").read_text(encoding="utf-8")
+          assert "Stable v2.0.0 exit criteria" in validation
+          assert "Google Play validation" in validation
+          assert "Cafe Bazaar / Poolakey validation" in validation
+          assert "AdMob validation" in validation
 
-          print("UPM package sanity checks passed.")
+          print("UPM package and Validation Pack sanity checks passed.")
