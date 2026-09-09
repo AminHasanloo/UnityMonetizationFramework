@@ -1,0 +1,52 @@
+name: Package Sanity
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate UPM metadata and v2 migration guards
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+
+          root = Path("com.aminhasanloo.monetization")
+          package = json.loads((root / "package.json").read_text(encoding="utf-8"))
+
+          assert package["name"] == "com.aminhasanloo.monetization"
+          assert package["version"].startswith("2.")
+          assert package["unity"].startswith("6000.")
+          assert package["dependencies"]["com.unity.purchasing"].startswith("5.")
+
+          source = "\n".join(
+              p.read_text(encoding="utf-8-sig", errors="ignore")
+              for p in root.rglob("*.cs")
+          )
+
+          # v1 fake store shims and unsafe direct-client payment code must not return.
+          forbidden = [
+              "public static class BazaarIAB",
+              "public static class MyketIAB",
+              "IronSource.Agent",
+              "new PaymentRequest { merchant_id",
+          ]
+          for token in forbidden:
+              assert token not in source, f"Retired v1 implementation returned: {token}"
+
+          assert not (root / "Plugins/Android/AndroidManifestTemplate.xml").exists(), \
+              "Legacy Android store proxy manifest must remain removed"
+
+          readme = Path("README.md").read_text(encoding="utf-8")
+          assert "Future Roadmap" in readme
+          assert "real-device/store validation" in readme
+
+          print("UPM package sanity checks passed.")
