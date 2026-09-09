@@ -2,69 +2,157 @@
 #if STORE_GOOGLEPLAY
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
+using AminHasanloo.Monetization.Settings;
 using UnityEngine;
 using UnityEngine.Purchasing;
-using UnityEngine.Purchasing.Extension;
 
-namespace AminHasanloo.Monetization.IAP.Providers
+namespace AminHasanloo.Monetization.IAP
 {
-    public class GooglePlayIapProvider : IIapProvider, IStoreListener
+    /// <summary>
+    /// Unity IAP 5.x adapter. The v1 IStoreListener/ConfigurationBuilder implementation
+    /// was removed because those APIs were replaced by StoreController in IAP v5.
+    /// </summary>
+    public sealed class GooglePlayIapProvider : IIapProvider
     {
-        private IStoreController controller;
-        private IExtensionProvider extensions;
+        readonly GooglePlayIapSettings settings;
+        readonly StoreProvider store;
+        readonly Dictionary<string, string> canonicalToStore = new Dictionary<string, string>();
+        readonly Dictionary<string, string> storeToCanonical = new Dictionary<string, string>();
 
-        public bool IsInitialized => controller != null && extensions != null;
+        StoreController controller;
+        TaskCompletionSource<bool> productsFetched;
+        bool disposed;
 
-        public event Action<string> OnPurchaseSucceeded;
-        public event Action<string, string> OnPurchaseFailed;
+        public bool IsInitialized { get; private set; }
+        public event Action<string> PurchaseSucceeded;
+        public event Action<string, string> PurchaseFailed;
 
-        public void Initialize(string[] productIds)
+        public GooglePlayIapProvider(GooglePlayIapSettings settings, StoreProvider store)
         {
-            var builder = ConfigurationBuilder.Instance(StandardPurchasingModule.Instance());
-            foreach (var id in productIds)
-                builder.AddProduct(id, ProductType.Consumable, new IDs { { id, GooglePlay.Name } });
-            UnityPurchasing.Initialize(this, builder);
+            this.settings = settings;
+            this.store = store;
+        }
+
+        public async Task InitializeAsync(IReadOnlyList<IapProductDefinition> products)
+        {
+            if (!settings.enabled)
+                throw new InvalidOperationException("Google Play IAP is selected but disabled in Monetization Settings.");
+
+            canonicalToStore.Clear();
+            storeToCanonical.Clear();
+
+            var definitions = new List<ProductDefinition>();
+            if (products != null)
+            {
+                foreach (var product in products)
+                {
+                    if (product == null || string.IsNullOrWhiteSpace(product.id)) continue;
+                    var storeId = product.GetStoreId(store);
+                    canonicalToStore[product.id] = storeId;
+                    storeToCanonical[storeId] = product.id;
+                    definitions.Add(new ProductDefinition(storeId, ToUnityProductType(product.type)));
+                }
+            }
+
+            controller = UnityIAPServices.StoreController();
+            controller.OnPurchasePending += OnPurchasePending;
+            controller.OnPurchaseFailed += failedOrder =>
+                PurchaseFailed?.Invoke(TryGetCanonicalId(failedOrder.ToString()), failedOrder.ToString());
+
+            productsFetched = new TaskCompletionSource<bool>();
+            controller.OnProductsFetched += fetchedProducts => productsFetched.TrySetResult(true);
+            controller.OnProductsFetchFailed += failure =>
+                productsFetched.TrySetException(new InvalidOperationException($"Unity IAP product fetch failed: {failure}"));
+
+            controller.OnPurchasesFetched += orders =>
+            {
+                foreach (var confirmedOrder in orders.ConfirmedOrders)
+                {
+                    foreach (var item in confirmedOrder.CartOrdered.Items())
+                    {
+                        if (item.Product.definition.type == ProductType.Consumable) continue;
+                        PurchaseSucceeded?.Invoke(TryGetCanonicalId(item.Product.definition.id));
+                    }
+                }
+            };
+
+            await controller.Connect();
+
+            if (definitions.Count > 0)
+            {
+                controller.FetchProducts(definitions);
+                await productsFetched.Task;
+            }
+
+            IsInitialized = true;
+            controller.FetchPurchases();
+            Debug.Log($"[Monetization/GooglePlay] Unity IAP v5 connected with {definitions.Count} product(s).");
         }
 
         public void Purchase(string productId)
         {
-            if (!IsInitialized) { Debug.LogWarning("Unity IAP not initialized"); return; }
-            var product = controller.products.WithID(productId);
-            if (product != null && product.availableToPurchase) controller.InitiatePurchase(product);
-            else Debug.LogWarning("Product not found or not available: " + productId);
+            if (!IsInitialized || controller == null)
+            {
+                PurchaseFailed?.Invoke(productId, "Unity IAP is not initialized.");
+                return;
+            }
+
+            if (!canonicalToStore.TryGetValue(productId, out var storeId))
+            {
+                PurchaseFailed?.Invoke(productId, "Product is not present in the monetization catalog.");
+                return;
+            }
+
+            controller.PurchaseProduct(storeId);
         }
 
-        public void Restore()
+        public Task RestoreAsync()
         {
-            if (!IsInitialized) return;
-#if UNITY_ANDROID
-            var google = extensions.GetExtension<IGooglePlayStoreExtensions>();
-            google.RestoreTransactions(result => Debug.Log("RestoreTransactions: " + result));
-#endif
+            if (controller == null) return Task.CompletedTask;
+            controller.FetchPurchases();
+            return Task.CompletedTask;
         }
 
-        // IStoreListener
-        public void OnInitialized(IStoreController controller, IExtensionProvider extensions)
+        void OnPurchasePending(PendingOrder order)
         {
-            this.controller = controller; this.extensions = extensions;
-            Debug.Log("Unity IAP Initialized");
+            try
+            {
+                foreach (var item in order.CartOrdered.Items())
+                    PurchaseSucceeded?.Invoke(TryGetCanonicalId(item.Product.definition.id));
+
+                // Basic local-fulfilment mode. For server-authoritative economies, replace this
+                // with receipt verification before ConfirmPurchase (see README roadmap/security notes).
+                controller.ConfirmPurchase(order);
+            }
+            catch (Exception ex)
+            {
+                PurchaseFailed?.Invoke(string.Empty, $"Purchase fulfillment failed: {ex.Message}");
+            }
         }
 
-        public void OnInitializeFailed(InitializationFailureReason error)
+        string TryGetCanonicalId(string storeId)
         {
-            Debug.LogError("IAP Init Failed: " + error);
+            if (string.IsNullOrWhiteSpace(storeId)) return storeId;
+            return storeToCanonical.TryGetValue(storeId, out var id) ? id : storeId;
         }
 
-        public PurchaseProcessingResult ProcessPurchase(PurchaseEventArgs e)
+        static ProductType ToUnityProductType(IapProductType type)
         {
-            Debug.Log("Purchase Success: " + e.purchasedProduct.definition.id);
-            OnPurchaseSucceeded?.Invoke(e.purchasedProduct.definition.id);
-            return PurchaseProcessingResult.Complete;
+            switch (type)
+            {
+                case IapProductType.NonConsumable: return ProductType.NonConsumable;
+                case IapProductType.Subscription: return ProductType.Subscription;
+                default: return ProductType.Consumable;
+            }
         }
 
-        public void OnPurchaseFailed(Product product, PurchaseFailureReason failureReason)
+        public void Dispose()
         {
-            OnPurchaseFailed?.Invoke(product.definition.id, failureReason.ToString());
+            if (disposed) return;
+            disposed = true;
+            IsInitialized = false;
+            controller = null;
         }
     }
 }
