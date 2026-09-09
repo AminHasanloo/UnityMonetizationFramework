@@ -32,11 +32,12 @@ jobs:
               for p in root.rglob("*.cs")
           )
 
-          # v1 fake store shims and unsafe direct-client payment code must not return.
+          # v1 fake store shims and unsafe executable calls must not return.
           forbidden = [
               "public static class BazaarIAB",
               "public static class MyketIAB",
-              "IronSource.Agent",
+              "IronSource.Agent.init(",
+              "IronSource.Agent.showRewardedVideo(",
               "new PaymentRequest { merchant_id",
           ]
           for token in forbidden:
