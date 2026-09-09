@@ -10,7 +10,7 @@
     "url": "https://github.com/AminHasanloo"
   },
   "dependencies": {
-    "com.unity.purchasing": "5.0.4"
+    "com.unity.purchasing": "5.4.3"
   },
   "keywords": [
     "unity",
