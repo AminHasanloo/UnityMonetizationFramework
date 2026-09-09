@@ -4,11 +4,11 @@
 
 ### A production-focused monetization layer for Unity 6
 
-**Mock-first development • Unity IAP 5.0.4 • Google Play • Cafe Bazaar Poolakey • AdMob**
+**Mock-first development • Unity IAP 5.4.3 • Google Play • Cafe Bazaar Poolakey • AdMob**
 
 [![Unity](https://img.shields.io/badge/Unity-6%20%7C%206000.0%2B-111827?style=for-the-badge&logo=unity&logoColor=white)](#requirements)
 [![Version](https://img.shields.io/badge/version-2.0.0-7c3aed?style=for-the-badge)](com.aminhasanloo.monetization/CHANGELOG.md)
-[![Unity IAP](https://img.shields.io/badge/Unity_IAP-5.0.4-0ea5e9?style=for-the-badge)](#google-play-iap)
+[![Unity IAP](https://img.shields.io/badge/Unity_IAP-5.4.3-0ea5e9?style=for-the-badge)](#google-play-iap)
 [![License](https://img.shields.io/badge/license-MIT-22c55e?style=for-the-badge)](LICENSE)
 
 **Built by [Amin Hasanloo](https://github.com/AminHasanloo)**
@@ -93,7 +93,7 @@ The public API remains small while SDK-specific code stays behind adapters.
 ## Requirements
 
 - **Unity 6 / 6000.0+**
-- `com.unity.purchasing` **5.0.4**, declared by the package
+- `com.unity.purchasing` **5.4.3**, declared by the package
 - Android for Cafe Bazaar and the Iran-focused store integrations
 - Official external SDK only when the corresponding adapter is enabled
 
@@ -252,8 +252,11 @@ Load
   → CanShowAd
   → Show
   → Closed / Failed
+  → Destroy used ad
   → Reload
 ```
+
+The implementation has also been checked against the current Google Mobile Ads Unity **11.5.0** API surface. This is an API-contract check, not a claim of a live ad impression test.
 
 Setup:
 
