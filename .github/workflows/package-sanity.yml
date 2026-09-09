@@ -1,0 +1,65 @@
+name: Package Sanity
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate UPM metadata and v2 migration guards
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+
+          root = Path("com.aminhasanloo.monetization")
+          package = json.loads((root / "package.json").read_text(encoding="utf-8"))
+
+          assert package["name"] == "com.aminhasanloo.monetization"
+          assert package["version"] == "2.0.0"
+          assert package["unity"].startswith("6000.")
+          assert package["dependencies"]["com.unity.purchasing"] == "5.4.3"
+
+          source = "\n".join(
+              p.read_text(encoding="utf-8-sig", errors="ignore")
+              for p in root.rglob("*.cs")
+          )
+
+          # v1 fake store shims and unsafe executable calls must not return.
+          forbidden = [
+              "public static class BazaarIAB",
+              "public static class MyketIAB",
+              "IronSource.Agent.init(",
+              "IronSource.Agent.showRewardedVideo(",
+              "new PaymentRequest { merchant_id",
+          ]
+          for token in forbidden:
+              assert token not in source, f"Retired v1 implementation returned: {token}"
+
+          assert not (root / "Plugins/Android/AndroidManifestTemplate.xml").exists(), \
+              "Legacy Android store proxy manifest must remain removed"
+
+          readme = Path("README.md").read_text(encoding="utf-8")
+          package_readme = (root / "README.md").read_text(encoding="utf-8")
+          changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
+
+          assert "Future Roadmap" in readme
+          assert "real-device/store validation" in readme
+          assert "Unity IAP 5.4.3" in readme
+          assert "Unity IAP **5.4.3**" in package_readme
+          assert "Unity IAP dependency updated to **5.4.3**" in changelog
+
+          # AdMob v2 must treat full-screen ads as single-use and track true banner readiness.
+          admob = (root / "Runtime/Ads/Adapters/AdMobAdapter.cs").read_text(encoding="utf-8")
+          assert "ad.Destroy();" in admob
+          assert "bannerLoaded" in admob
+          assert "OnBannerAdLoadFailed" in admob
+
+          print("UPM package sanity checks passed.")
