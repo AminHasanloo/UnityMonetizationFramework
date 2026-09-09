@@ -9,7 +9,9 @@ using UnityEngine;
 namespace AminHasanloo.Monetization.Ads
 {
     /// <summary>
-    /// Google Mobile Ads adapter using the current static Load()/CanShowAd()/Show(Action&lt;Reward&gt;) API.
+    /// Google Mobile Ads adapter using the current Load / CanShowAd / Show lifecycle.
+    /// The implementation deliberately owns ad destruction/reload so full-screen ad
+    /// objects are not leaked or accidentally shown twice.
     /// </summary>
     public sealed class AdMobAdapter : IAdNetwork
     {
@@ -17,11 +19,15 @@ namespace AminHasanloo.Monetization.Ads
         RewardedAd rewarded;
         InterstitialAd interstitial;
         BannerView banner;
+        bool bannerLoaded;
 
         public AdMobAdapter(AdMobSettings settings) => this.settings = settings;
 
         public Task InitializeAsync()
         {
+            if (settings == null)
+                throw new ArgumentNullException(nameof(settings));
+
             var tcs = new TaskCompletionSource<bool>();
             MobileAds.Initialize(_ => tcs.TrySetResult(true));
             return tcs.Task;
@@ -31,10 +37,14 @@ namespace AminHasanloo.Monetization.Ads
         {
             switch (type)
             {
-                case AdType.Rewarded: return rewarded != null && rewarded.CanShowAd();
-                case AdType.Interstitial: return interstitial != null && interstitial.CanShowAd();
-                case AdType.Banner: return banner != null;
-                default: return false;
+                case AdType.Rewarded:
+                    return rewarded != null && rewarded.CanShowAd();
+                case AdType.Interstitial:
+                    return interstitial != null && interstitial.CanShowAd();
+                case AdType.Banner:
+                    return banner != null && bannerLoaded;
+                default:
+                    return false;
             }
         }
 
@@ -59,6 +69,12 @@ namespace AminHasanloo.Monetization.Ads
             rewarded?.Destroy();
             rewarded = null;
 
+            if (string.IsNullOrWhiteSpace(settings.rewardedAdUnitId))
+            {
+                Debug.LogWarning("[Monetization/AdMob] Rewarded Ad Unit ID is empty.");
+                return;
+            }
+
             RewardedAd.Load(settings.rewardedAdUnitId, new AdRequest(), (ad, error) =>
             {
                 if (error != null || ad == null)
@@ -68,17 +84,6 @@ namespace AminHasanloo.Monetization.Ads
                 }
 
                 rewarded = ad;
-                ad.OnAdFullScreenContentClosed += () =>
-                {
-                    rewarded = null;
-                    LoadRewarded();
-                };
-                ad.OnAdFullScreenContentFailed += errorInfo =>
-                {
-                    Debug.LogWarning($"[Monetization/AdMob] Rewarded show failed: {errorInfo}");
-                    rewarded = null;
-                    LoadRewarded();
-                };
             });
         }
 
@@ -86,6 +91,12 @@ namespace AminHasanloo.Monetization.Ads
         {
             interstitial?.Destroy();
             interstitial = null;
+
+            if (string.IsNullOrWhiteSpace(settings.interstitialAdUnitId))
+            {
+                Debug.LogWarning("[Monetization/AdMob] Interstitial Ad Unit ID is empty.");
+                return;
+            }
 
             InterstitialAd.Load(settings.interstitialAdUnitId, new AdRequest(), (ad, error) =>
             {
@@ -96,24 +107,27 @@ namespace AminHasanloo.Monetization.Ads
                 }
 
                 interstitial = ad;
-                ad.OnAdFullScreenContentClosed += () =>
-                {
-                    interstitial = null;
-                    LoadInterstitial();
-                };
-                ad.OnAdFullScreenContentFailed += errorInfo =>
-                {
-                    Debug.LogWarning($"[Monetization/AdMob] Interstitial show failed: {errorInfo}");
-                    interstitial = null;
-                    LoadInterstitial();
-                };
             });
         }
 
         void LoadBanner()
         {
             DestroyBanner("default");
+
+            if (string.IsNullOrWhiteSpace(settings.bannerAdUnitId))
+            {
+                Debug.LogWarning("[Monetization/AdMob] Banner Ad Unit ID is empty.");
+                return;
+            }
+
+            bannerLoaded = false;
             banner = new BannerView(settings.bannerAdUnitId, AdSize.Banner, AdPosition.Bottom);
+            banner.OnBannerAdLoaded += () => bannerLoaded = true;
+            banner.OnBannerAdLoadFailed += error =>
+            {
+                bannerLoaded = false;
+                Debug.LogWarning($"[Monetization/AdMob] Banner load failed: {error}");
+            };
             banner.LoadAd(new AdRequest());
         }
 
@@ -122,32 +136,68 @@ namespace AminHasanloo.Monetization.Ads
             if (type == AdType.Rewarded && rewarded != null && rewarded.CanShowAd())
             {
                 var ad = rewarded;
-                Action closeHandler = null;
-                closeHandler = () =>
+                rewarded = null; // prevents a second Show call while this ad is on screen
+
+                Action closedHandler = null;
+                Action<AdError> failedHandler = null;
+
+                closedHandler = () =>
                 {
-                    ad.OnAdFullScreenContentClosed -= closeHandler;
-                    onClosed?.Invoke();
+                    DetachRewardedHandlers(ad, closedHandler, failedHandler);
+                    ad.Destroy();
+                    try { onClosed?.Invoke(); }
+                    finally { LoadRewarded(); }
                 };
-                ad.OnAdFullScreenContentClosed += closeHandler;
-                ad.Show(reward => onReward?.Invoke(new Reward { Type = reward.Type, Amount = reward.Amount }));
+
+                failedHandler = error =>
+                {
+                    DetachRewardedHandlers(ad, closedHandler, failedHandler);
+                    ad.Destroy();
+                    Debug.LogWarning($"[Monetization/AdMob] Rewarded show failed: {error}");
+                    LoadRewarded();
+                };
+
+                ad.OnAdFullScreenContentClosed += closedHandler;
+                ad.OnAdFullScreenContentFailed += failedHandler;
+                ad.Show(reward => onReward?.Invoke(new Reward
+                {
+                    Type = reward.Type,
+                    Amount = reward.Amount
+                }));
                 return;
             }
 
             if (type == AdType.Interstitial && interstitial != null && interstitial.CanShowAd())
             {
                 var ad = interstitial;
-                Action closeHandler = null;
-                closeHandler = () =>
+                interstitial = null; // prevents duplicate show attempts
+
+                Action closedHandler = null;
+                Action<AdError> failedHandler = null;
+
+                closedHandler = () =>
                 {
-                    ad.OnAdFullScreenContentClosed -= closeHandler;
-                    onClosed?.Invoke();
+                    DetachInterstitialHandlers(ad, closedHandler, failedHandler);
+                    ad.Destroy();
+                    try { onClosed?.Invoke(); }
+                    finally { LoadInterstitial(); }
                 };
-                ad.OnAdFullScreenContentClosed += closeHandler;
+
+                failedHandler = error =>
+                {
+                    DetachInterstitialHandlers(ad, closedHandler, failedHandler);
+                    ad.Destroy();
+                    Debug.LogWarning($"[Monetization/AdMob] Interstitial show failed: {error}");
+                    LoadInterstitial();
+                };
+
+                ad.OnAdFullScreenContentClosed += closedHandler;
+                ad.OnAdFullScreenContentFailed += failedHandler;
                 ad.Show();
                 return;
             }
 
-            if (type == AdType.Banner && banner != null)
+            if (type == AdType.Banner && banner != null && bannerLoaded)
             {
                 banner.Show();
                 return;
@@ -156,10 +206,31 @@ namespace AminHasanloo.Monetization.Ads
             Debug.LogWarning($"[Monetization/AdMob] {type} is not ready.");
         }
 
+        static void DetachRewardedHandlers(
+            RewardedAd ad,
+            Action closedHandler,
+            Action<AdError> failedHandler)
+        {
+            if (ad == null) return;
+            if (closedHandler != null) ad.OnAdFullScreenContentClosed -= closedHandler;
+            if (failedHandler != null) ad.OnAdFullScreenContentFailed -= failedHandler;
+        }
+
+        static void DetachInterstitialHandlers(
+            InterstitialAd ad,
+            Action closedHandler,
+            Action<AdError> failedHandler)
+        {
+            if (ad == null) return;
+            if (closedHandler != null) ad.OnAdFullScreenContentClosed -= closedHandler;
+            if (failedHandler != null) ad.OnAdFullScreenContentFailed -= failedHandler;
+        }
+
         public void HideBanner(string placement) => banner?.Hide();
 
         public void DestroyBanner(string placement)
         {
+            bannerLoaded = false;
             banner?.Destroy();
             banner = null;
         }
