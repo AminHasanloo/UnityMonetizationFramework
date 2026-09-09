@@ -1,59 +1,17 @@
 // SPDX-License-Identifier: MIT
-#if AD_IRONSOURCE
-using System;
-using System.Threading.Tasks;
-using AminHasanloo.Monetization.Settings;
-// Requires LevelPlay / IronSource Unity SDK
-public class IronSourceAdapter : AminHasanloo.Monetization.Ads.IAdNetwork
+// v2.0 migration note:
+// The legacy IronSource.Agent integration was removed because Unity LevelPlay 9+
+// requires the newer LevelPlay Init API and Ad Unit objects.
+//
+// This file intentionally contains no SDK references so projects carrying the old
+// AD_IRONSOURCE symbol do not compile against stale APIs. Remove AD_IRONSOURCE and
+// follow the LevelPlay item in the README roadmap for the new adapter.
+
+namespace AminHasanloo.Monetization.Ads
 {
-    private readonly IronSourceSettings _s;
-    public IronSourceAdapter(IronSourceSettings s) { _s = s; }
-
-    public Task InitializeAsync()
+    internal static class LegacyIronSourceAdapterRetired
     {
-        var tcs = new TaskCompletionSource<bool>();
-        IronSource.Agent.validateIntegration();
-        IronSource.Agent.init(_s.appKey, IronSourceAdUnits.REWARDED_VIDEO, IronSourceAdUnits.INTERSTITIAL, IronSourceAdUnits.BANNER);
-        tcs.SetResult(true);
-        return tcs.Task;
+        public const string Message =
+            "Legacy IronSource.Agent adapter retired in Monetization v2.0. Use the future LevelPlay Ad Unit adapter.";
     }
-
-    public bool IsReady(AminHasanloo.Monetization.Ads.AdType type, string placement)
-    {
-        if (type == AminHasanloo.Monetization.Ads.AdType.Rewarded) return IronSource.Agent.isRewardedVideoAvailable();
-        if (type == AminHasanloo.Monetization.Ads.AdType.Interstitial) return IronSource.Agent.isInterstitialReady();
-        if (type == AminHasanloo.Monetization.Ads.AdType.Banner) return true;
-        return false;
-    }
-
-    public void Load(AminHasanloo.Monetization.Ads.AdType type, string placement)
-    {
-        if (type == AminHasanloo.Monetization.Ads.AdType.Interstitial) IronSource.Agent.loadInterstitial();
-        // banners & rewarded are auto-managed in most setups
-    }
-
-    public void Show(AminHasanloo.Monetization.Ads.AdType type, string placement, Action<AminHasanloo.Monetization.Ads.Reward> onReward = null, Action onClosed = null)
-    {
-        if (type == AminHasanloo.Monetization.Ads.AdType.Rewarded && IronSource.Agent.isRewardedVideoAvailable())
-        {
-            IronSourceEvents.onRewardedVideoAdRewardedEvent += (placementName, reward) =>
-            {
-                onReward?.Invoke(new AminHasanloo.Monetization.Ads.Reward { Type = reward.getName(), Amount = reward.getAmount() });
-            };
-            IronSource.Agent.showRewardedVideo(_s.rewardedPlacement);
-        }
-        else if (type == AminHasanloo.Monetization.Ads.AdType.Interstitial && IronSource.Agent.isInterstitialReady())
-        {
-            IronSource.Agent.showInterstitial(_s.interstitialPlacement);
-        }
-        else if (type == AminHasanloo.Monetization.Ads.AdType.Banner)
-        {
-            IronSource.Agent.loadBanner(IronSourceBannerSize.BANNER, IronSourceBannerPosition.BOTTOM);
-            IronSource.Agent.displayBanner();
-        }
-    }
-
-    public void HideBanner(string placement) => IronSource.Agent.hideBanner();
-    public void DestroyBanner(string placement) => IronSource.Agent.destroyBanner();
 }
-#endif
