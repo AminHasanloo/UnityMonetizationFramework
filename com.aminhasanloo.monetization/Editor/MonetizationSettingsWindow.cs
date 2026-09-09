@@ -79,7 +79,7 @@ namespace AminHasanloo.Monetization.Editor
             EditorGUILayout.PropertyField(so.FindProperty("tapsell"), true);
             EditorGUILayout.PropertyField(so.FindProperty("levelPlay"), true);
             EditorGUILayout.HelpBox(
-                "LevelPlay legacy IronSource.Agent code is retired in v2.0. The LevelPlay 9+ Ad Unit adapter is listed in the roadmap and is not enabled automatically.",
+                "AdMob is the validated v2 adapter path. Tapsell is waiting for a response-ID lifecycle migration, and LevelPlay is waiting for the 9+ Ad Unit API adapter. Neither legacy symbol is enabled automatically.",
                 MessageType.Info);
 
             so.ApplyModifiedProperties();
@@ -114,9 +114,9 @@ namespace AminHasanloo.Monetization.Editor
             defines.Remove(string.Empty);
 
             SetDefine(defines, "AD_ADMOB", s.adMob.enabled);
-            SetDefine(defines, "AD_TAPSELL", s.tapsell.enabled);
 
-            // Remove the obsolete v1 symbol. LevelPlay 9+ will use AD_LEVELPLAY when its v2 adapter lands.
+            // Retired legacy ad symbols are deliberately removed until clean v2 adapters land.
+            defines.Remove("AD_TAPSELL");
             defines.Remove("AD_IRONSOURCE");
             defines.Remove("AD_LEVELPLAY");
 
@@ -125,7 +125,7 @@ namespace AminHasanloo.Monetization.Editor
             SetDefine(defines, "STORE_CAFEBAZAAR",
                 s.activeStore == StoreProvider.CafeBazaar && s.cafeBazaar.enabled);
 
-            // Fail-safe: unsupported/unsafe v1 adapters are never enabled by the editor UI.
+            // Unsupported/unsafe v1 IAP adapters are never enabled by the editor UI.
             defines.Remove("STORE_MYKET");
             defines.Remove("PAY_ZARINPAL");
 
