@@ -173,12 +173,23 @@ namespace AminHasanloo.Monetization.Settings
         public static MonetizationSettings Load()
         {
             var settings = Resources.Load<MonetizationSettings>("MonetizationSettings");
-            if (settings == null)
-            {
-                settings = CreateInstance<MonetizationSettings>();
-                settings.name = "Runtime Monetization Settings (defaults)";
-            }
+            if (settings != null)
+                return settings;
+
+#if UNITY_EDITOR
+            // Safe transient defaults for explicit Editor tests. Auto-start is disabled so
+            // merely importing the package does not execute a fake purchase environment.
+            settings = CreateInstance<MonetizationSettings>();
+            settings.name = "Transient Monetization Settings (Editor Mock)";
+            settings.initializeOnStartup = false;
+            settings.useMockServicesInEditor = true;
+            settings.activeStore = StoreProvider.Mock;
             return settings;
+#else
+            // Never silently fall back to Mock purchases in a player build.
+            throw new InvalidOperationException(
+                "MonetizationSettings.asset is missing. Create Assets/Resources/MonetizationSettings.asset before building a player.");
+#endif
         }
     }
 }
