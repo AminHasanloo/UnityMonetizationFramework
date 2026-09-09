@@ -61,6 +61,7 @@ namespace AminHasanloo.Monetization
 #else
                     throw MissingSdk("Google Play", "STORE_GOOGLEPLAY", "Unity IAP 5.x");
 #endif
+                    break;
 
                 case StoreProvider.CafeBazaar:
 #if STORE_CAFEBAZAAR
@@ -68,6 +69,7 @@ namespace AminHasanloo.Monetization
 #else
                     throw MissingSdk("Cafe Bazaar", "STORE_CAFEBAZAAR", "Poolakey Unity SDK");
 #endif
+                    break;
 
                 case StoreProvider.Myket:
 #if STORE_MYKET
@@ -75,6 +77,7 @@ namespace AminHasanloo.Monetization
 #else
                     throw MissingSdk("Myket", "STORE_MYKET", "official Myket Billing Unity adapter");
 #endif
+                    break;
 
                 case StoreProvider.ZarinpalLegacy:
 #if PAY_ZARINPAL
@@ -82,6 +85,7 @@ namespace AminHasanloo.Monetization
 #else
                     throw MissingSdk("Zarinpal legacy client flow", "PAY_ZARINPAL", "the legacy adapter");
 #endif
+                    break;
 
                 default:
                     throw new ArgumentOutOfRangeException();
@@ -101,12 +105,12 @@ namespace AminHasanloo.Monetization
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         static async void AutoInitialize()
         {
-            var settings = MonetizationSettings.Load();
-            if (!settings.initializeOnStartup)
-                return;
-
             try
             {
+                var settings = MonetizationSettings.Load();
+                if (!settings.initializeOnStartup)
+                    return;
+
                 await InitializeAsync();
             }
             catch (Exception ex)
