@@ -1,52 +1,36 @@
 // SPDX-License-Identifier: MIT
 #if STORE_MYKET
 using System;
-using UnityEngine;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using AminHasanloo.Monetization.Settings;
 
-namespace AminHasanloo.Monetization.IAP.Providers
+namespace AminHasanloo.Monetization.IAP
 {
-    public class MyketIapProvider : IIapProvider
+    /// <summary>
+    /// v1 included no-op placeholder Myket classes which could report a false sense of integration.
+    /// Those shims are removed in v2. This adapter intentionally fails fast until the official
+    /// Myket Billing Unity API is wired and device-tested.
+    /// </summary>
+    public sealed class MyketIapProvider : IIapProvider
     {
-        private readonly string publicKey;
-        public MyketIapProvider(string publicKey) { this.publicKey = publicKey; }
-        public bool IsInitialized { get; private set; }
-        public event Action<string> OnPurchaseSucceeded;
-        public event Action<string, string> OnPurchaseFailed;
+        public bool IsInitialized => false;
+        public event Action<string> PurchaseSucceeded;
+        public event Action<string, string> PurchaseFailed;
 
-        public void Initialize(string[] productIds)
+        public MyketIapProvider(MyketIapSettings settings, StoreProvider store) { }
+
+        public Task InitializeAsync(IReadOnlyList<IapProductDefinition> products)
         {
-            try
-            {
-                MyketIAB.enableLogging(true);
-                MyketIAB.init(publicKey);
-                MyketIABEventManager.billingSupportedEvent += () => { IsInitialized = true; MyketIAB.queryInventory(productIds); };
-                MyketIABEventManager.billingNotSupportedEvent += (err) => Debug.LogError("Myket billing not supported: " + err);
-                MyketIABEventManager.purchaseSucceededEvent += (purchase) => OnPurchaseSucceeded?.Invoke(purchase.ProductId);
-                MyketIABEventManager.purchaseFailedEvent += (err) => OnPurchaseFailed?.Invoke("", err);
-            }
-            catch (Exception e) { Debug.LogError(e); }
+            throw new NotSupportedException(
+                "The fake v1 Myket shim was removed. Install the official Myket Billing Unity SDK and use the v2.1 Myket adapter from the roadmap before enabling STORE_MYKET.");
         }
 
-        public void Purchase(string productId) => MyketIAB.purchaseProduct(productId);
-        public void Restore() => MyketIAB.queryPurchases();
-    }
+        public void Purchase(string productId) =>
+            PurchaseFailed?.Invoke(productId, "Myket adapter is not implemented in v2.0.");
 
-    // Dummy placeholders if plugin absent
-    public static class MyketIAB
-    {
-        public static void enableLogging(bool v) { }
-        public static void init(string key) { }
-        public static void queryInventory(string[] skus) { }
-        public static void queryPurchases() { }
-        public static void purchaseProduct(string sku) { }
+        public Task RestoreAsync() => Task.CompletedTask;
+        public void Dispose() { }
     }
-    public static class MyketIABEventManager
-    {
-        public static event Action billingSupportedEvent;
-        public static event Action<string> billingNotSupportedEvent;
-        public static event Action<MyketPurchase> purchaseSucceededEvent;
-        public static event Action<string> purchaseFailedEvent;
-    }
-    public class MyketPurchase { public string ProductId; }
 }
 #endif
