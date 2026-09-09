@@ -2,23 +2,23 @@
   "name": "com.aminhasanloo.monetization",
   "displayName": "Amin Hasanloo Monetization (IAP + Ads)",
   "version": "2.0.0",
-  "unity": "2021.3",
-  "description": "Modular Unity monetization framework with a safe Editor mock, Unity IAP 5.x, Cafe Bazaar Poolakey, AdMob, Tapsell, single-store routing, async initialization and production-focused migration guards.",
+  "unity": "6000.0",
+  "description": "Modular Unity monetization framework with a safe Editor mock, Unity IAP 5.x, Cafe Bazaar Poolakey, AdMob, single-store routing, async initialization and production-focused migration guards.",
   "author": {
     "name": "Amin Hasanloo",
     "email": "hsoamin76@gmail.com",
     "url": "https://github.com/AminHasanloo"
   },
   "dependencies": {
-    "com.unity.purchasing": "5.0.0"
+    "com.unity.purchasing": "5.0.4"
   },
   "keywords": [
     "unity",
+    "unity6",
     "monetization",
     "iap",
     "ads",
     "admob",
-    "tapsell",
     "cafebazaar",
     "poolakey",
     "android"
