@@ -12,6 +12,9 @@
   "dependencies": {
     "com.unity.purchasing": "5.4.3"
   },
+  "documentationUrl": "https://github.com/AminHasanloo/UnityMonetizationFramework#readme",
+  "changelogUrl": "https://github.com/AminHasanloo/UnityMonetizationFramework/blob/main/com.aminhasanloo.monetization/CHANGELOG.md",
+  "licensesUrl": "https://github.com/AminHasanloo/UnityMonetizationFramework/blob/main/LICENSE",
   "keywords": [
     "unity",
     "unity6",
@@ -28,6 +31,11 @@
       "displayName": "Monetization Demo",
       "description": "Minimal demo that works in Editor with mock IAP and ads, then switches to configured providers for builds.",
       "path": "Samples~/Demo"
+    },
+    {
+      "displayName": "Validation Dashboard",
+      "description": "Zero-art validation dashboard and scene builder for mock, store and ad-provider verification.",
+      "path": "Samples~/Validation"
     }
   ]
 }

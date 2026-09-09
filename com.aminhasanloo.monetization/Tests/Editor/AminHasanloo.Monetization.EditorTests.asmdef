@@ -1,0 +1,21 @@
+{
+  "name": "AminHasanloo.Monetization.EditorTests",
+  "rootNamespace": "AminHasanloo.Monetization.Tests",
+  "references": [
+    "AminHasanloo.Monetization.Runtime"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "noEngineReferences": false
+}

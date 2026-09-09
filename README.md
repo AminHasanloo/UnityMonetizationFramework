@@ -9,6 +9,7 @@
 [![Unity](https://img.shields.io/badge/Unity-6%20%7C%206000.0%2B-111827?style=for-the-badge&logo=unity&logoColor=white)](#requirements)
 [![Version](https://img.shields.io/badge/version-2.0.0-7c3aed?style=for-the-badge)](com.aminhasanloo.monetization/CHANGELOG.md)
 [![Unity IAP](https://img.shields.io/badge/Unity_IAP-5.4.3-0ea5e9?style=for-the-badge)](#google-play-iap)
+[![Package Sanity](https://github.com/AminHasanloo/UnityMonetizationFramework/actions/workflows/package-sanity.yml/badge.svg)](https://github.com/AminHasanloo/UnityMonetizationFramework/actions/workflows/package-sanity.yml)
 [![License](https://img.shields.io/badge/license-MIT-22c55e?style=for-the-badge)](LICENSE)
 
 **Built by [Amin Hasanloo](https://github.com/AminHasanloo)**
@@ -31,22 +32,49 @@ The rewrite fixes provider overwrite races, event subscription loss, missing aut
 
 ## ✅ What works in v2.0
 
-| Provider / feature | Status | Details |
-|---|---:|---|
-| **Mock IAP** | ✅ Ready | Works immediately in Unity Editor |
-| **Mock Ads** | ✅ Ready | Rewarded, interstitial and banner development flow |
-| **Google Play IAP** | ✅ Rewritten | Unity IAP 5.x `StoreController` architecture |
-| **Cafe Bazaar** | ✅ Rewritten | Binds to official Poolakey `Payment` API |
-| **AdMob** | ✅ Rewritten | Current load / readiness / show lifecycle |
-| **Single-store routing** | ✅ Ready | Exactly one active IAP provider |
-| **Typed product catalog** | ✅ Ready | Consumable, non-consumable, subscription, store overrides |
-| **Auto initialization** | ✅ Ready | `RuntimeInitializeOnLoadMethod` bootstrap |
-| **Myket** | 🧭 Planned | Fake v1 shim removed |
-| **Tapsell Plus** | 🧭 Planned | Old adapter retired, current response-ID flow required |
-| **Unity LevelPlay** | 🧭 Planned | Legacy `IronSource.Agent` retired, LevelPlay 9+ Ad Unit API required |
-| **Zarinpal** | 🔒 Backend roadmap | Unsafe client verification removed |
+| Provider / feature | Implementation | Validation state |
+|---|---:|---:|
+| **Mock IAP** | ✅ Ready | 🟦 Editor tests/dashboard included |
+| **Mock Ads** | ✅ Ready | 🟦 Editor tests/dashboard included |
+| **Google Play IAP** | ✅ Unity IAP 5.x `StoreController` | 🟡 Real store/device test required |
+| **Cafe Bazaar** | ✅ Official Poolakey API binding | 🟡 Real Bazaar/device test required |
+| **AdMob** | ✅ Current load/readiness/show lifecycle | 🟡 Test ad IDs on device required |
+| **Single-store routing** | ✅ Ready | ✅ Static regression guard |
+| **Typed product catalog** | ✅ Ready | 🟦 EditMode tests included |
+| **Auto initialization** | ✅ Ready | 🟦 Validation Dashboard included |
+| **Myket** | 🧭 Planned | 🔒 Not advertised as ready |
+| **Tapsell Plus** | 🧭 Planned | 🔒 Not advertised as ready |
+| **Unity LevelPlay** | 🧭 Planned | 🔒 Not advertised as ready |
+| **Zarinpal** | 🔒 Backend roadmap | 🔒 Unsafe client flow removed |
 
-> External store/ad flows still require the vendor's official SDK, dashboard setup, test account/IDs and **real-device/store validation**. The core and Editor mock flow can be exercised without those services; this repository update does not claim a live financial transaction was executed from GitHub.
+> External store/ad flows still require the vendor's official SDK, dashboard setup, test account/IDs and **real-device/store validation**. This repository never treats compile success as proof of a valid financial integration.
+
+---
+
+## 🧪 Validation Pack
+
+v2.0 now ships with a dedicated validation layer instead of relying on manual guesswork.
+
+### Included
+
+- **EditMode core tests** for product mapping, v1 catalog migration, Mock IAP success/failure and Mock rewarded callbacks.
+- **Validation Dashboard sample** for initialize, purchase, restore, rewarded, interstitial and banner flows.
+- **Validation Scene Builder** at `Tools > Monetization > Create Validation Scene`.
+- **Provider validation issue form** for recording Unity version, SDK version, device, environment and evidence.
+- **Release checklist** that blocks a stable label until advertised providers have evidence.
+- **Package Sanity CI** that guards metadata, retired v1 code and Validation Pack files.
+
+Full protocol: **[VALIDATION.md](VALIDATION.md)**  
+Stable release gate: **[RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md)**
+
+### Confidence legend
+
+| Mark | Meaning |
+|---|---|
+| ✅ | Evidence passed in CI or a recorded test |
+| 🟦 | Test/tool is included and ready to run |
+| 🟡 | Official SDK/account/device validation is still required |
+| 🔒 | Intentionally unavailable in v2.0 |
 
 ---
 
@@ -60,7 +88,7 @@ The rewrite fixes provider overwrite races, event subscription loss, missing aut
 - Stable canonical product IDs plus per-store overrides.
 - Mock services make shop UI, reward logic and purchase events testable in Editor.
 - Unsupported legacy integrations are not auto-enabled by the settings window.
-- Obsolete Android manifest proxy/deep-link shims were removed. Official SDKs now own their Android manifests and dependencies.
+- Obsolete Android proxy/deep-link shims were removed so official SDKs own their Android dependencies.
 
 ---
 
@@ -86,7 +114,7 @@ flowchart LR
     A --> C[Reward / close callbacks]
 ```
 
-The public API remains small while SDK-specific code stays behind adapters.
+The public game-side API remains small while SDK-specific code stays behind providers/adapters.
 
 ---
 
@@ -94,7 +122,7 @@ The public API remains small while SDK-specific code stays behind adapters.
 
 - **Unity 6 / 6000.0+**
 - `com.unity.purchasing` **5.4.3**, declared by the package
-- Android for Cafe Bazaar and the Iran-focused store integrations
+- Android for Cafe Bazaar and the current Iran-focused store workflows
 - Official external SDK only when the corresponding adapter is enabled
 
 ---
@@ -117,6 +145,8 @@ Or add to `Packages/manifest.json`:
 }
 ```
 
+After a stable GitHub tag is validated, prefer pinning that tag instead of tracking `main`.
+
 ---
 
 ## 60-second Editor test
@@ -126,7 +156,11 @@ Or add to `Packages/manifest.json`:
 3. Keep `Active Store = Mock`.
 4. Keep `Use Mock Services In Editor = true`.
 5. Add `coins_100` as a Consumable product.
-6. Import the **Monetization Demo** sample or use this script:
+6. Import **Validation Dashboard** from Package Manager.
+7. Run **Tools → Monetization → Create Validation Scene**.
+8. Enter Play Mode and exercise the buttons.
+
+Or initialize directly:
 
 ```csharp
 using AminHasanloo.Monetization;
@@ -155,21 +189,11 @@ public class ShopExample : MonoBehaviour
 }
 ```
 
-In Editor, Mock IAP will complete the configured purchase and Mock Ads will invoke the reward callback. This lets gameplay and UI be built before any store SDK is installed.
-
 ---
 
 ## Product catalog
 
-Each product has a canonical ID used by game code:
-
-```text
-coins_100
-remove_ads
-vip_monthly
-```
-
-And optionally different IDs per store:
+Game code uses a stable canonical ID while stores can have different IDs:
 
 | Field | Example |
 |---|---|
@@ -179,7 +203,15 @@ And optionally different IDs per store:
 | `cafeBazaarId` | `coins_100_bazaar` |
 | `myketId` | reserved for future adapter |
 
-Old v1 `productIds` are retained as a hidden migration field and are interpreted as consumables when the new catalog is empty.
+Supported product types:
+
+```text
+Consumable
+NonConsumable
+Subscription
+```
+
+Old v1 `productIds` are retained as a hidden migration field and are interpreted as consumables when the v2 catalog is empty.
 
 ---
 
@@ -204,10 +236,11 @@ Setup:
 3. Add products to the catalog.
 4. Click **Apply Android Scripting Define Symbols**.
 5. Build through a valid Google Play testing track/account.
+6. Record the run with the **Provider validation report** issue form.
 
-The adapter handles store connection callbacks, product fetch success/failure, purchase failure details, restore failure, pending purchases and confirmed non-consumable/subscription entitlement delivery.
+The adapter registers store, product-fetch, purchase-fetch and purchase-failure callbacks before requests are made.
 
-### Important fulfillment note
+### Fulfillment note
 
 The default implementation confirms a pending order after the local success callback. That is practical for prototypes and low-risk local products, but **valuable virtual currency or competitive economies should be server-authoritative**. Verify the transaction, make the grant idempotent, persist it server-side, then confirm.
 
@@ -215,9 +248,7 @@ The default implementation confirms a pending order after the local success call
 
 ## Cafe Bazaar / Poolakey
 
-The old v1 `BazaarIAB` dummy classes are gone.
-
-v2 binds to the official Poolakey public API:
+The v1 dummy `BazaarIAB` classes are gone. v2 binds to the official Poolakey public API:
 
 ```text
 PaymentConfiguration
@@ -232,10 +263,11 @@ Setup:
 1. Install the official [Cafe Bazaar Poolakey Unity SDK](https://github.com/cafebazaar/PoolakeyUnitySdk).
 2. Set `Active Store = CafeBazaar`.
 3. Enable Cafe Bazaar.
-4. Add the RSA public key if you use Poolakey security checking.
-5. Configure product types and IDs.
+4. Add the RSA public key if Poolakey security checking is used.
+5. Configure product types and store IDs.
 6. Apply Android scripting symbols.
-7. Validate purchases on a Bazaar-compatible Android test environment.
+7. Validate on a Bazaar-compatible test environment/device.
+8. Record the evidence with the validation issue form.
 
 Consumables may be auto-consumed. Restore re-delivers non-consumable and subscription entitlements.
 
@@ -243,20 +275,18 @@ Consumables may be auto-consumed. Restore re-delivers non-consumable and subscri
 
 ## AdMob
 
-The old request builder and legacy rewarded event flow were replaced.
-
-The adapter now follows:
+The adapter follows the modern lifecycle:
 
 ```text
 Load
   → CanShowAd
   → Show
   → Closed / Failed
-  → Destroy used ad
+  → Destroy used full-screen ad
   → Reload
 ```
 
-The implementation has also been checked against the current Google Mobile Ads Unity **11.5.0** API surface. This is an API-contract check, not a claim of a live ad impression test.
+Banner readiness is tracked from the actual load callback instead of treating object creation as a loaded ad.
 
 Setup:
 
@@ -264,25 +294,8 @@ Setup:
 2. Enable AdMob.
 3. Enter Banner, Interstitial and Rewarded Ad Unit IDs.
 4. Apply Android scripting symbols.
-5. Use Google's test ad units during integration.
-6. Validate on device before release.
-
-Example:
-
-```csharp
-await Monetization.InitializeAsync();
-
-Ads.Load(AdType.Rewarded, "reward_default");
-Ads.Load(AdType.Interstitial, "level_end");
-
-if (Ads.IsRewardedReady("reward_default"))
-{
-    Ads.ShowRewarded("reward_default", reward =>
-    {
-        // Grant reward here
-    });
-}
-```
+5. Use Google's **test ad units** during validation.
+6. Validate on device and record a provider validation report.
 
 ---
 
@@ -290,19 +303,19 @@ if (Ads.IsRewardedReady("reward_default"))
 
 ### Tapsell Plus
 
-The old adapter used obsolete method names and treated a **zone ID as a response ID**, which does not match the current request/show lifecycle. It is intentionally disabled in v2.0 until the current response-ID adapter is implemented and device-tested.
+The old adapter treated a zone ID as if it were the response ID returned by the current request flow. It is disabled until the proper `Request*Ad(zoneId) → responseId → Show*Ad(responseId)` lifecycle is implemented and device-tested.
 
 ### Unity LevelPlay / ironSource
 
-The old `IronSource.Agent` adapter is retired. Modern LevelPlay uses the newer initialization flow and Rewarded/Interstitial/Banner Ad Unit objects. A clean adapter is planned for v2.1.
+The old `IronSource.Agent` path is retired. A modern LevelPlay Ad Unit implementation is planned for v2.1.
 
 ### Myket
 
-The v1 provider consisted of dummy placeholder methods. Those placeholders were removed. `STORE_MYKET` is not enabled by the settings tool until a real official-SDK adapter is implemented.
+The v1 provider contained placeholder methods. They were removed. `STORE_MYKET` is not enabled until a real official-SDK adapter exists.
 
 ### Zarinpal
 
-The old implementation placed merchant configuration, authoritative amount logic and payment verification in the game client. v2 removes that path. The correct future design is a backend-owned checkout and verification flow.
+The old implementation kept authoritative amount/verification logic in the game client. v2 removes that path. The future implementation is a backend-owned checkout and verification flow.
 
 ---
 
@@ -316,7 +329,7 @@ STORE_CAFEBAZAAR
 AD_ADMOB
 ```
 
-The window removes these legacy/unvalidated symbols:
+Legacy/unvalidated symbols are removed instead of enabled:
 
 ```text
 STORE_MYKET
@@ -325,8 +338,6 @@ AD_TAPSELL
 AD_IRONSOURCE
 AD_LEVELPLAY
 ```
-
-That behavior is intentional.
 
 ---
 
@@ -339,7 +350,7 @@ That behavior is intentional.
 | `initializeOnStartup` had no true bootstrap | Runtime bootstrap added |
 | Early IAP subscriptions could be lost | Facade owns subscriptions |
 | Flat string-only product IDs | Typed catalog + store overrides |
-| Google Play used IAP v4 listener APIs | Rewritten for StoreController / IAP 5.x |
+| Google Play used IAP v4 listener APIs | Rewritten for `StoreController` / IAP 5.x |
 | AdMob mixed legacy/current APIs | Current load/show lifecycle |
 | Bazaar dummy classes | Real Poolakey binding |
 | Myket dummy classes | Removed, fail-fast roadmap guard |
@@ -367,32 +378,23 @@ That behavior is intentional.
 ## Repository structure
 
 ```text
-com.aminhasanloo.monetization/
-├── Runtime/
-│   ├── Ads/
-│   │   ├── AdsManager.cs
-│   │   ├── IAdNetwork.cs
-│   │   └── Adapters/
-│   │       ├── MockAdNetwork.cs
-│   │       ├── AdMobAdapter.cs
-│   │       ├── TapsellAdapter.cs       # retirement note
-│   │       └── IronSourceAdapter.cs    # retirement note
-│   ├── IAP/
-│   │   ├── Interfaces.cs
-│   │   ├── Monetization.cs
-│   │   └── Providers/
-│   │       ├── MockIapProvider.cs
-│   │       ├── GooglePlayIapProvider.cs
-│   │       ├── CafeBazaarIapProvider.cs
-│   │       ├── MyketIapProvider.cs     # roadmap guard
-│   │       └── ZarinpalProvider.cs     # security guard
-│   └── Settings/
-│       └── MonetizationSettings.cs
-├── Editor/
-│   └── MonetizationSettingsWindow.cs
-├── Samples~/Demo/
-├── CHANGELOG.md
-└── package.json
+.
+├── .github/
+│   ├── ISSUE_TEMPLATE/provider-validation.yml
+│   └── workflows/package-sanity.yml
+├── VALIDATION.md
+├── RELEASE_CHECKLIST.md
+└── com.aminhasanloo.monetization/
+    ├── Runtime/
+    │   ├── Ads/
+    │   ├── IAP/
+    │   └── Settings/
+    ├── Editor/
+    ├── Tests/Editor/
+    ├── Samples~/Demo/
+    ├── Samples~/Validation/
+    ├── CHANGELOG.md
+    └── package.json
 ```
 
 ---
@@ -408,7 +410,7 @@ Provider PRs should state:
 - purchase/ad formats actually tested
 - required Android/iOS build configuration
 
-The goal is to keep this project evidence-driven rather than filling adapters with decorative methods that merely compile. 🧪
+For provider validation, use the repository's **Provider validation report** issue form. Never attach secrets or sensitive receipts.
 
 ---
 
@@ -423,8 +425,8 @@ MIT
 The long-term goal is to keep **game-side monetization code stable** while store, ad and payment SDKs evolve underneath it.
 
 ### v2.1 • Complete current provider coverage
-- [ ] Implement **Tapsell Plus** using `Request*Ad(zoneId) → responseId → Show*Ad(responseId)`
-- [ ] Implement **Unity LevelPlay 9+** with `LevelPlay.Init` and Rewarded / Interstitial / Banner Ad Unit APIs
+- [ ] Implement **Tapsell Plus** with the current response-ID lifecycle
+- [ ] Implement **Unity LevelPlay** with the modern Init + Ad Unit APIs
 - [ ] Implement the **official Myket Billing** adapter with purchase, consume and restore
 - [ ] Add iOS App Store validation through Unity IAP 5.x
 - [ ] Add per-platform provider selection
@@ -460,11 +462,13 @@ The long-term goal is to keep **game-side monetization code stable** while store
 ### v2.5 • Developer tooling
 - [ ] Editor health dashboard for missing SDKs, IDs and symbols
 - [ ] Automatic v1 → v2 migration assistant
-- [ ] Unity Test Framework coverage for the core and mock providers
-- [ ] CI compile matrix for supported Unity 6 versions
+- [x] Unity Test Framework coverage for the SDK-independent core and mock providers
+- [x] Validation Dashboard + validation scene builder sample
+- [x] Provider validation issue form + stable release checklist
+- [ ] CI Unity compile/test matrix for supported Unity 6 versions
 - [ ] Android build validation workflow
-- [ ] Sample shop UI and ad test scene
-- [ ] GitHub Releases + UPM tags
+- [ ] Sample production-style shop UI
+- [ ] GitHub Releases + immutable UPM tags
 - [ ] Generated API documentation
 
 ### Longer term
